@@ -533,13 +533,15 @@ class Pandoki(object):
             self.Save(song)
 
         elif (mode == 'tired'):
-            self.player.playnext()
+            if self.playlist.getposition() != (self.playlist.size() - 1):
+                self.player.playnext()
             self.pithos.set_tired(song['token'])
 
         elif (mode == 'down'):
             song['voted'] = 'down'
 	    Prop('voted', 'down')
-            self.player.playnext()
+            if self.playlist.getposition() != (self.playlist.size() - 1):
+                self.player.playnext()
             self.pithos.add_feedback(song['token'], False)
             notification('Thumb DOWN', song['title'], '3000', iconart)
 
@@ -589,14 +591,16 @@ class Pandoki(object):
             else:
                 self.pithos.add_feedback(song['token'], False)
                 notification('Thumb DOWN', song['title'], '3000', iconart)
-            self.player.playnext()
+            if self.playlist.getposition() != (self.playlist.size() - 1):
+                self.player.playnext()
 
         elif (rating == '1'):
             self.pithos.add_feedback(song['token'], False)
-                notification('Thumb DOWN', song['title'], '3000', iconart)
-            self.player.playnext()
+            notification('Thumb DOWN', song['title'], '3000', iconart)
+            if self.playlist.getposition() != (self.playlist.size() - 1):
+                self.player.playnext()
 
-        elif (rating == ''):
+        elif (rating == '0'):
             feedback = self.pithos.add_feedback(song['token'], True)
             self.pithos.del_feedback(song['station'], feedback)
             notification('Thumb CLEARED', song['title'], '3000', iconart)
@@ -607,21 +611,24 @@ class Pandoki(object):
         if ((rate) and (time.time() < self.wait['scan'])) or (xbmcgui.getCurrentWindowDialogId() == 10135): return
         self.wait['scan'] = time.time() + 15
 
+	rated = False
         songs = dict()
         for pos in range(0, self.playlist.size()):
             tk = self.playlist[pos].getProperty("%s.token" % _id)
-            rt = xbmc.getInfoLabel("MusicPlayer.Position(%d).Rating" % pos)
-            if (rt == ''): rt = '0'
 
             if tk in self.songs:
                 song = self.songs[tk]
                 del self.songs[tk]
                 songs[tk] = song
-
-                if (rate) and (song.get('rating', rt) != rt):
-                    self.Rated(song, rt)
-                elif not song.get('rating'):
-                    song['rating'] = rt
+                
+                if self.playlist.getposition() == pos:
+                    rt = xbmc.getInfoLabel("MusicPlayer.UserRating")
+                    if (rt == ''): rt = '0'
+                    if not rated and (song.get('rating', rt) != rt):
+                        rated = True
+                        self.Rated(song, rt)
+                    elif not song.get('rating'):
+                        song['rating'] = rt
 
         for s in self.songs:
             if (not self.songs[s].get('keep', False)) and xbmcvfs.exists(self.songs[s].get('path_cch')):
